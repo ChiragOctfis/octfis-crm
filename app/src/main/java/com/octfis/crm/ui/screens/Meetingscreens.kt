@@ -1,0 +1,401 @@
+package com.octfis.crm.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import com.octfis.crm.ui.components.DateTimePickerField
+import com.octfis.crm.navigation.Screen
+import com.octfis.crm.ui.components.FormRow
+import com.octfis.crm.ui.components.SectionHeader
+import com.octfis.crm.ui.theme.*
+
+// ── Detail ────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MeetingDetailScreen(
+    navController: NavController,
+    meetingId: String,
+    vm: MeetingsViewModel = viewModel(),
+    detailVm: MeetingDetailViewModel = viewModel(factory = MeetingDetailViewModel.Factory(meetingId)),
+) {
+    val detailState by detailVm.uiState.collectAsState()
+    val meeting = (detailState as? MeetingDetailUiState.Success)?.meeting
+
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    val actionState by vm.actionState.collectAsState()
+    val snackbarHost = remember { SnackbarHostState() }
+
+    LaunchedEffect(actionState) {
+        when (val s = actionState) {
+            is MeetingActionState.Done  -> { vm.resetActionState(); navController.popBackStack() }
+            is MeetingActionState.Error -> { snackbarHost.showSnackbar(s.message); vm.resetActionState() }
+            else -> Unit
+        }
+    }
+
+    // ✅ FIX: observe the refresh signal set by EditMeetingScreen after a successful save
+    val shouldRefresh by navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getStateFlow("shouldRefresh", false)
+        ?.collectAsState()
+        ?: remember { mutableStateOf(false) }
+
+    LaunchedEffect(shouldRefresh) {
+        if (shouldRefresh == true) {
+            detailVm.load()
+            navController.currentBackStackEntry
+                ?.savedStateHandle
+                ?.set("shouldRefresh", false)
+        }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title   = { Text("Delete Meeting?") },
+            text    = { Text("\"${meeting?.title}\" will be permanently deleted from Zoho CRM.") },
+            confirmButton = {
+                TextButton(onClick = { showDeleteDialog = false; meeting?.let { vm.deleteMeeting(it.zohoId) } }) {
+                    Text("Delete", color = CrmError)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+            },
+        )
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHost) },
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text       = meeting?.title?.ifEmpty { "Meeting Detail" } ?: "Meeting Detail",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize   = 17.sp,
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
+                actions = {
+                    if (meeting != null) {
+                        IconButton(onClick = { navController.navigate(Screen.EditMeeting.createRoute(meetingId)) }) {
+                            Icon(Icons.Default.Edit, "Edit", tint = CrmPrimary)
+                        }
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(Icons.Default.Delete, "Delete", tint = CrmError)
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { padding ->
+
+        if (detailState is MeetingDetailUiState.Loading) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = CrmPrimary)
+            }
+            return@Scaffold
+        }
+
+        if (detailState is MeetingDetailUiState.Error || meeting == null) {
+            Box(Modifier.fillMaxSize().padding(padding)) {
+                Text(
+                    text     = (detailState as? MeetingDetailUiState.Error)?.message ?: "Meeting not found",
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+            return@Scaffold
+        }
+
+        if (actionState is MeetingActionState.Working) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = CrmPrimary)
+            }
+            return@Scaffold
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            SectionHeader("Meeting Information")
+            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+                Column {
+                    FormRow("Title",        meeting.title.ifEmpty { "—" })
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                    FormRow("Start",        meeting.startDateTime.replace("T", " ").ifEmpty { "—" })
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                    FormRow("End",          meeting.endDateTime.replace("T", " ").ifEmpty { "—" })
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                    FormRow("Location",     meeting.location.ifEmpty { "—" })
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                    FormRow("Owner",        meeting.ownerName.ifEmpty { "—" })
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                    FormRow("Participants", meeting.participants.ifEmpty { "—" })
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            SectionHeader("Description")
+            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+                FormRow("Description", meeting.description.ifEmpty { "—" })
+            }
+
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+// ── Create ────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CreateMeetingScreen(
+    navController: NavController,
+    vm: MeetingFormViewModel = viewModel(),
+) {
+    var title         by remember { mutableStateOf("") }
+    var startDateTime by remember { mutableStateOf("") }
+    var endDateTime   by remember { mutableStateOf("") }
+    var location      by remember { mutableStateOf("") }
+    var description   by remember { mutableStateOf("") }
+    var selectedOwner by remember { mutableStateOf(Pair("", "-None-")) }
+
+    val saveState      by vm.saveState.collectAsState()
+    val owners         by vm.owners.collectAsState()
+    val optionsLoading by vm.optionsLoading.collectAsState()
+    val snackbarHost    = remember { SnackbarHostState() }
+
+    LaunchedEffect(saveState) {
+        when (val s = saveState) {
+            is MeetingActionState.Done  -> navController.popBackStack()
+            is MeetingActionState.Error -> { snackbarHost.showSnackbar(s.message); vm.resetState() }
+            else -> Unit
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHost) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Create Meeting", fontWeight = FontWeight.SemiBold, fontSize = 17.sp) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
+                actions = {
+                    val saving = saveState is MeetingActionState.Working
+                    Button(
+                        onClick  = {
+                            if (!saving) vm.create(title, startDateTime, endDateTime, location, description, selectedOwner.first)
+                        },
+                        enabled  = !saving,
+                        colors   = ButtonDefaults.buttonColors(containerColor = CrmPrimary),
+                        shape    = RoundedCornerShape(6.dp),
+                        modifier = Modifier.padding(end = 8.dp),
+                    ) {
+                        if (saving) CircularProgressIndicator(Modifier.size(16.dp), color = MaterialTheme.colorScheme.surface, strokeWidth = 2.dp)
+                        else Text("Save", color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.SemiBold)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+            SectionHeader("Meeting Information")
+            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+                Column {
+                    ActivityTextField("Title",           title,         "Enter meeting title", required = true) { title = it }
+                    ActivityDivider()
+                    DateTimePickerField("Start Date/Time", startDateTime, required = true) { startDateTime = it }
+                    ActivityDivider()
+                    DateTimePickerField("End Date/Time", endDateTime, required = true) { endDateTime = it }
+                    ActivityDivider()
+                    ActivityTextField("Location",        location,      "Enter location")                        { location = it }
+                    ActivityDivider()
+                    ActivityDropdown(
+                        label   = "Owner",
+                        value   = selectedOwner.second,
+                        options = owners.map { it.second },
+                        loading = optionsLoading,
+                    ) { name -> selectedOwner = owners.firstOrNull { it.second == name } ?: Pair("", name) }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            SectionHeader("Additional Information")
+            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+                ActivityTextField("Description", description, "Short description", multiline = true) { description = it }
+            }
+
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+// ── Edit ──────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditMeetingScreen(
+    navController: NavController,
+    meetingId: String,
+    vm: MeetingFormViewModel = viewModel(),
+    detailVm: MeetingDetailViewModel = viewModel(factory = MeetingDetailViewModel.Factory(meetingId)),
+) {
+    val detailState by detailVm.uiState.collectAsState()
+    val meeting = (detailState as? MeetingDetailUiState.Success)?.meeting
+
+    var title         by remember { mutableStateOf("") }
+    var startDateTime by remember { mutableStateOf("") }
+    var endDateTime   by remember { mutableStateOf("") }
+    var location      by remember { mutableStateOf("") }
+    var description   by remember { mutableStateOf("") }
+    var selectedOwner by remember { mutableStateOf(Pair("", "-None-")) }
+    var fieldsInitialised by remember { mutableStateOf(false) }
+
+    val saveState      by vm.saveState.collectAsState()
+    val owners         by vm.owners.collectAsState()
+    val optionsLoading by vm.optionsLoading.collectAsState()
+    val snackbarHost    = remember { SnackbarHostState() }
+
+    LaunchedEffect(meeting, owners) {
+        if (meeting != null && !fieldsInitialised) {
+            title         = meeting.title
+            startDateTime = meeting.startDateTime
+            endDateTime   = meeting.endDateTime
+            location      = meeting.location
+            description   = meeting.description
+            val ownerPair = owners.firstOrNull { it.second == meeting.ownerName }
+            selectedOwner = ownerPair ?: Pair(meeting.ownerId, meeting.ownerName.ifEmpty { "-None-" })
+            fieldsInitialised = true
+        }
+    }
+
+    LaunchedEffect(saveState) {
+        when (val s = saveState) {
+            is MeetingActionState.Done  -> {
+                // ✅ FIX: signal the detail screen to re-fetch instead of calling
+                // detailVm.load() here (which fires on a dying VM scope and is discarded)
+                navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.set("shouldRefresh", true)
+                navController.popBackStack()
+            }
+            is MeetingActionState.Error -> { snackbarHost.showSnackbar(s.message); vm.resetState() }
+            else -> Unit
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHost) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Edit Meeting", fontWeight = FontWeight.SemiBold, fontSize = 17.sp) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
+                actions = {
+                    val saving = saveState is MeetingActionState.Working
+                    Button(
+                        onClick = {
+                            if (!saving && meeting != null)
+                                vm.update(meeting.zohoId, title, startDateTime, endDateTime, location, description, selectedOwner.first)
+                        },
+                        enabled  = !saving && meeting != null,
+                        colors   = ButtonDefaults.buttonColors(containerColor = CrmPrimary),
+                        shape    = RoundedCornerShape(6.dp),
+                        modifier = Modifier.padding(end = 8.dp),
+                    ) {
+                        if (saving) CircularProgressIndicator(Modifier.size(16.dp), color = MaterialTheme.colorScheme.surface, strokeWidth = 2.dp)
+                        else Text("Save", color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.SemiBold)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { padding ->
+
+        if (detailState is MeetingDetailUiState.Loading) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = CrmPrimary)
+            }
+            return@Scaffold
+        }
+
+        if (detailState is MeetingDetailUiState.Error) {
+            Box(Modifier.fillMaxSize().padding(padding)) {
+                Text(
+                    text     = (detailState as MeetingDetailUiState.Error).message,
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+            return@Scaffold
+        }
+
+        Column(modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+            SectionHeader("Meeting Information")
+            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+                Column {
+                    ActivityTextField("Title",           title,         "Enter meeting title", required = true) { title = it }
+                    ActivityDivider()
+                    DateTimePickerField("Start Date/Time", startDateTime, required = true) { startDateTime = it }
+                    ActivityDivider()
+                    DateTimePickerField("End Date/Time", endDateTime, required = true) { endDateTime = it }
+                    ActivityDivider()
+                    ActivityTextField("Location",        location,      "Enter location")                        { location = it }
+                    ActivityDivider()
+                    ActivityDropdown(
+                        label   = "Owner",
+                        value   = selectedOwner.second,
+                        options = owners.map { it.second },
+                        loading = optionsLoading,
+                    ) { name -> selectedOwner = owners.firstOrNull { it.second == name } ?: Pair("", name) }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            SectionHeader("Additional Information")
+            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+                ActivityTextField("Description", description, "Short description", multiline = true) { description = it }
+            }
+
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}

@@ -1,0 +1,150 @@
+package com.octfis.crm.ui.screens
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.octfis.crm.data.remote.ZohoServiceLocator
+import com.octfis.crm.data.repository.AccountRepository
+import com.octfis.crm.data.repository.ContactRepository
+import com.octfis.crm.ui.components.LookupItem
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+data class ContactPicklistOptions(
+    val leadSources : List<String>               = emptyList(),
+    val owners      : List<Pair<String, String>> = emptyList(),
+)
+
+sealed class CreateContactState {
+    object Idle   : CreateContactState()
+    object Saving : CreateContactState()
+    data class Saved(val zohoId: String)  : CreateContactState()
+    data class Error(val message: String) : CreateContactState()
+}
+
+class CreateContactViewModel : ViewModel() {
+
+    private val api         = ZohoServiceLocator.getApiService()
+    private val repo        = ContactRepository(api)
+    private val accountRepo = AccountRepository(api)
+
+    private val _options = MutableStateFlow(ContactPicklistOptions())
+    val options: StateFlow<ContactPicklistOptions> = _options.asStateFlow()
+
+    private val _optionsLoading = MutableStateFlow(true)
+    val optionsLoading: StateFlow<Boolean> = _optionsLoading.asStateFlow()
+
+    private val _createState = MutableStateFlow<CreateContactState>(CreateContactState.Idle)
+    val createState: StateFlow<CreateContactState> = _createState.asStateFlow()
+
+    private val _accountItems = MutableStateFlow<List<LookupItem>>(emptyList())
+    val accountItems: StateFlow<List<LookupItem>> = _accountItems.asStateFlow()
+
+    init { loadOptions() }
+
+    private fun loadOptions() {
+        viewModelScope.launch {
+            _optionsLoading.value = true
+            try {
+                val fieldsDeferred = async { runCatching { api.getFields("Contacts") }.getOrNull() }
+                val usersDeferred  = async { runCatching { api.getUsers("AllUsers") }.getOrNull() }
+                val fields = fieldsDeferred.await()
+                val users  = usersDeferred.await()
+
+                _options.value = ContactPicklistOptions(
+                    leadSources = fields?.fields
+                        ?.firstOrNull { it.apiName == "Lead_Source" }
+                        ?.pickListValues?.map { it.displayValue } ?: listOf("-None-"),
+
+                    owners = listOf(Pair("", "-None-")) +
+                            (users?.users?.map { Pair(it.id, it.displayName) }
+                                ?: emptyList()),
+                )
+            } catch (_: Exception) {
+                _options.value = ContactPicklistOptions(
+                    leadSources = listOf("-None-"),
+                    owners      = listOf(Pair("", "-None-")),
+                )
+            } finally {
+                _optionsLoading.value = false
+            }
+
+            loadAccountLookup()
+        }
+    }
+
+    private fun loadAccountLookup() {
+        viewModelScope.launch {
+            val cached = AccountRepository.cache
+            if (cached.isNotEmpty()) {
+                _accountItems.value = cached.map { LookupItem(it.zohoId, it.name, it.phone) }
+            } else {
+                runCatching { accountRepo.getAccounts(1) }
+                    .getOrNull()
+                    ?.getOrNull()
+                    ?.first
+                    ?.let { accounts ->
+                        _accountItems.value = accounts.map { LookupItem(it.zohoId, it.name, it.phone) }
+                    }
+            }
+        }
+    }
+
+    fun save(
+        firstName     : String,
+        lastName      : String,
+        phone         : String,
+        mobile        : String = "",
+        email         : String,
+        accountName   : String,
+        accountZohoId : String = "",
+        title         : String,
+        department    : String,
+        ownerEntry    : Pair<String, String>,
+        leadSource    : String,
+        description   : String,
+        mailingStreet : String,
+        mailingStreet2: String,
+        mailingCity   : String,
+        mailingState  : String,
+        mailingZip    : String,
+        mailingCountry: String,
+    ) {
+        if (lastName.isBlank()) {
+            _createState.value = CreateContactState.Error("Last Name is required")
+            return
+        }
+        viewModelScope.launch {
+            _createState.value = CreateContactState.Saving
+            repo.createContact(
+                firstName      = firstName,
+                lastName       = lastName,
+                phone          = phone,
+                mobile         = mobile,
+                email          = email,
+                accountName    = accountName,
+                accountZohoId  = accountZohoId,
+                title          = title,
+                department     = department,
+                contactOwner   = ownerEntry.first,
+                leadSource     = leadSource,
+                description    = description,
+                mailingStreet  = listOfNotNull(
+                    mailingStreet.ifBlank { null },
+                    mailingStreet2.ifBlank { null }
+                ).joinToString("\n"),
+                mailingCity    = mailingCity,
+                mailingState   = mailingState,
+                mailingZip     = mailingZip,
+                mailingCountry = mailingCountry,
+            ).fold(
+                onSuccess = { id -> _createState.value = CreateContactState.Saved(id) },
+                onFailure = { e  -> _createState.value = CreateContactState.Error(e.message ?: "Save failed") },
+            )
+        }
+    }
+
+    fun resetState() { _createState.value = CreateContactState.Idle }
+}

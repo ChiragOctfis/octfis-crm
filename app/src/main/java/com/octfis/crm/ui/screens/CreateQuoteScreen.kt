@@ -1,0 +1,439 @@
+package com.octfis.crm.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import com.octfis.crm.data.model.QuoteItem
+import com.octfis.crm.data.remote.ZohoServiceLocator
+import com.octfis.crm.data.repository.AccountRepository
+import com.octfis.crm.data.repository.ContactRepository
+import com.octfis.crm.data.repository.DealRepository
+import com.octfis.crm.data.repository.QuoteRepository
+import com.octfis.crm.navigation.Screen
+import com.octfis.crm.ui.components.LookupField
+import com.octfis.crm.ui.components.LookupItem
+import com.octfis.crm.ui.components.SectionHeader
+import com.octfis.crm.ui.theme.*
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+// ── ViewModel ─────────────────────────────────────────────────────────────────
+
+sealed class CreateQuoteState {
+    object Idle    : CreateQuoteState()
+    object Saving  : CreateQuoteState()
+    object Success : CreateQuoteState()
+    data class Error(val message: String) : CreateQuoteState()
+}
+
+class CreateQuoteViewModel : ViewModel() {
+
+    private val api         = ZohoServiceLocator.getApiService()
+    private val accountRepo = AccountRepository(api)
+    private val contactRepo = ContactRepository(api)
+    private val dealRepo    = DealRepository(api)
+
+    private val _accountItems  = MutableStateFlow<List<LookupItem>>(emptyList())
+    val accountItems: StateFlow<List<LookupItem>> = _accountItems.asStateFlow()
+
+    private val _contactItems  = MutableStateFlow<List<LookupItem>>(emptyList())
+    val contactItems: StateFlow<List<LookupItem>> = _contactItems.asStateFlow()
+
+    private val _dealItems     = MutableStateFlow<List<LookupItem>>(emptyList())
+    val dealItems: StateFlow<List<LookupItem>> = _dealItems.asStateFlow()
+
+    private val _lookupLoading = MutableStateFlow(true)
+    val lookupLoading: StateFlow<Boolean> = _lookupLoading.asStateFlow()
+
+    private val _state = MutableStateFlow<CreateQuoteState>(CreateQuoteState.Idle)
+    val state: StateFlow<CreateQuoteState> = _state.asStateFlow()
+
+    init { loadLookups() }
+
+    private fun loadLookups() {
+        viewModelScope.launch {
+            _lookupLoading.value = true
+
+            val cachedAccounts = AccountRepository.cache
+            if (cachedAccounts.isNotEmpty())
+                _accountItems.value = cachedAccounts.map { LookupItem(it.zohoId, it.name, it.phone) }
+            else
+                runCatching { accountRepo.getAccounts(1) }.getOrNull()?.getOrNull()?.first
+                    ?.let { _accountItems.value = it.map { a -> LookupItem(a.zohoId, a.name, a.phone) } }
+
+            val cachedContacts = ContactRepository.cache
+            if (cachedContacts.isNotEmpty())
+                _contactItems.value = cachedContacts.map { LookupItem(it.zohoId, it.fullName, it.email) }
+            else
+                runCatching { contactRepo.getContacts(1) }.getOrNull()?.getOrNull()?.first
+                    ?.let { _contactItems.value = it.map { c -> LookupItem(c.zohoId, c.fullName, c.email) } }
+
+            val cachedDeals = DealRepository.cache
+            if (cachedDeals.isNotEmpty())
+                _dealItems.value = cachedDeals.map { LookupItem(it.zohoId, it.dealName, it.accountName) }
+            else
+                runCatching { dealRepo.getDeals(1) }.getOrNull()?.getOrNull()?.first
+                    ?.let { _dealItems.value = it.map { d -> LookupItem(d.zohoId, d.dealName, d.accountName) } }
+
+            _lookupLoading.value = false
+        }
+    }
+
+    fun save(
+        subject       : String,
+        accountName   : String,
+        accountZohoId : String,
+        contactName   : String,
+        contactZohoId : String,
+        dealName      : String,
+        dealZohoId    : String,
+        quoteStage    : String,
+        validUntil    : String,
+        description   : String,
+        items         : List<QuoteItem>,
+    ) {
+        if (_state.value == CreateQuoteState.Saving) return
+        viewModelScope.launch {
+            _state.value = CreateQuoteState.Saving
+            QuoteRepository(api).createQuote(
+                subject       = subject,
+                accountName   = accountName,
+                accountZohoId = accountZohoId,
+                contactName   = contactName,
+                contactZohoId = contactZohoId,
+                dealName      = dealName,
+                dealZohoId    = dealZohoId,
+                quoteStage    = quoteStage,
+                validUntil    = validUntil,
+                description   = description,
+                items         = items,
+            ).fold(
+                onSuccess = { _state.value = CreateQuoteState.Success },
+                onFailure = { e -> _state.value = CreateQuoteState.Error(e.message ?: "Save failed") },
+            )
+        }
+    }
+
+    fun clearError() { _state.value = CreateQuoteState.Idle }
+}
+
+// ── Screen ────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CreateQuoteScreen(
+    navController: NavController,
+    vm: CreateQuoteViewModel = viewModel(),
+) {
+    val accountItems  by vm.accountItems.collectAsState()
+    val contactItems  by vm.contactItems.collectAsState()
+    val dealItems     by vm.dealItems.collectAsState()
+    val lookupLoading by vm.lookupLoading.collectAsState()
+    val saveState     by vm.state.collectAsState()
+
+    var subject        by rememberSaveable { mutableStateOf("") }
+    var accountName    by rememberSaveable { mutableStateOf("") }
+    var accountZohoId  by rememberSaveable { mutableStateOf("") }
+    var contactName    by rememberSaveable { mutableStateOf("") }
+    var contactZohoId  by rememberSaveable { mutableStateOf("") }
+    var dealName       by rememberSaveable { mutableStateOf("") }
+    var dealZohoId     by rememberSaveable { mutableStateOf("") }
+    var validUntil     by rememberSaveable { mutableStateOf("") }
+    var quoteStage     by rememberSaveable { mutableStateOf("Draft") }
+    var description    by rememberSaveable { mutableStateOf("") }
+    var stageExpanded  by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    val isSaving          = saveState == CreateQuoteState.Saving
+    val snackbarHostState = remember { SnackbarHostState() }
+    val stageOptions      = listOf("Draft", "Delivered", "On Hold", "Confirmed", "Closed Accepted", "Closed Lost")
+    val items = rememberSaveable(
+        saver = listSaver<SnapshotStateList<QuoteItem>, QuoteItem>(
+            save = { it.toList() },
+            restore = { it.toMutableStateList() },
+        )
+    ) { mutableStateListOf<QuoteItem>() }
+
+    // Navigate on success / show snackbar on error
+    LaunchedEffect(saveState) {
+        when (val s = saveState) {
+            is CreateQuoteState.Success -> navController.popBackStack()
+            is CreateQuoteState.Error   -> { snackbarHostState.showSnackbar(s.message); vm.clearError() }
+            else -> Unit
+        }
+    }
+
+    // Receive item returned from AddQuoteItemScreen
+    val addItemHandle = navController.currentBackStackEntry?.savedStateHandle
+    val newQuoteItem  = addItemHandle?.getStateFlow<QuoteItem?>("newQuoteItem", null)?.collectAsState()
+    LaunchedEffect(newQuoteItem?.value) {
+        newQuoteItem?.value?.let { item ->
+            val editIndex = addItemHandle.get<Int>("editingQuoteItemIndex")
+            if (editIndex != null && editIndex in items.indices) {
+                items[editIndex] = item
+            } else {
+                items.add(item)
+            }
+            addItemHandle.set("newQuoteItem", null)
+            addItemHandle.set("editingQuoteItem", null)
+            addItemHandle.set("editingQuoteItemIndex", null)
+        }
+    }
+
+    // Date Picker
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        validUntil = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(millis))
+                    }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } },
+        ) { DatePicker(state = datePickerState) }
+    }
+
+    Scaffold(
+        snackbarHost   = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = { Text("Create Quote", fontWeight = FontWeight.SemiBold, fontSize = 17.sp) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
+                actions = {
+                    Button(
+                        onClick = {
+                            vm.save(
+                                subject       = subject,
+                                accountName   = accountName,
+                                accountZohoId = accountZohoId,
+                                contactName   = contactName,
+                                contactZohoId = contactZohoId,
+                                dealName      = dealName,
+                                dealZohoId    = dealZohoId,
+                                quoteStage    = quoteStage,
+                                validUntil    = validUntil,
+                                description   = description,
+                                items         = items.toList(),
+                            )
+                        },
+                        enabled  = !isSaving,
+                        colors   = ButtonDefaults.buttonColors(containerColor = CrmPrimary),
+                        shape    = RoundedCornerShape(6.dp),
+                        modifier = Modifier.padding(end = 8.dp),
+                    ) {
+                        if (isSaving)
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.surface)
+                        else
+                            Text("Save", color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.SemiBold)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            )
+        },
+    ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+            SectionHeader("Key Information")
+            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+                Column {
+                    QuoteFormField("Subject", subject, "Enter Quote title") { subject = it }
+                    QuoteDivider()
+                    LookupField(
+                        label       = "Account Name",
+                        value       = accountName,
+                        placeholder = "Select Account",
+                        items       = accountItems,
+                        loading     = lookupLoading && accountItems.isEmpty(),
+                        onSelect    = { item -> accountName = item.name; accountZohoId = item.zohoId },
+                    )
+                    QuoteDivider()
+                    LookupField(
+                        label       = "Contact Name",
+                        value       = contactName,
+                        placeholder = "Select Contact",
+                        items       = contactItems,
+                        loading     = lookupLoading && contactItems.isEmpty(),
+                        onSelect    = { item -> contactName = item.name; contactZohoId = item.zohoId },
+                    )
+                    QuoteDivider()
+                    LookupField(
+                        label       = "Deal",
+                        value       = dealName,
+                        placeholder = "Link a Deal (optional)",
+                        items       = dealItems,
+                        loading     = lookupLoading && dealItems.isEmpty(),
+                        onSelect    = { item -> dealName = item.name; dealZohoId = item.zohoId },
+                    )
+                    QuoteDivider()
+                    TextButton(
+                        onClick        = { showDatePicker = true },
+                        modifier       = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Valid Until", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(130.dp))
+                            Text(
+                                text     = validUntil.ifEmpty { "Select date" },
+                                fontSize = 13.sp,
+                                color    = if (validUntil.isEmpty()) CrmSubtext.copy(alpha = 0.7f) else CrmOnSurface,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                    QuoteDivider()
+                    ExposedDropdownMenuBox(expanded = stageExpanded, onExpandedChange = { stageExpanded = !stageExpanded }) {
+                        Row(
+                            modifier          = Modifier.fillMaxWidth().menuAnchor().padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("Quote Stage", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(130.dp))
+                            Text(quoteStage, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                            Icon(Icons.Default.ArrowDropDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        ExposedDropdownMenu(expanded = stageExpanded, onDismissRequest = { stageExpanded = false }) {
+                            stageOptions.forEach { option ->
+                                DropdownMenuItem(text = { Text(option, fontSize = 13.sp) }, onClick = { quoteStage = option; stageExpanded = false })
+                            }
+                        }
+                    }
+                    QuoteDivider()
+                    QuoteFormField("Description", description, "Short description") { description = it }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            SectionHeader("Quoted Items")
+            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+                Column {
+                    // Table header
+                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        Text("S.NO",      fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(36.dp))
+                        Text("Product",   fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                        Text("Thickness", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(62.dp))
+                        Text("Material",  fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(58.dp))
+                        Text("Qty",       fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(30.dp))
+                        Text("Price",     fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(60.dp))
+                        Spacer(Modifier.width(64.dp))
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp)
+
+                    items.forEachIndexed { index, item ->
+                        Row(
+                            modifier          = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("${item.sNo}",                           fontSize = 12.sp, modifier = Modifier.width(36.dp))
+                            Text(item.productName,                         fontSize = 12.sp, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                            Text(item.materialThickness,                   fontSize = 12.sp, modifier = Modifier.width(62.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(item.material,                            fontSize = 12.sp, modifier = Modifier.width(58.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${item.quantity}",                       fontSize = 12.sp, modifier = Modifier.width(30.dp))
+                            Text("₹${String.format("%.2f", item.price)}", fontSize = 12.sp, modifier = Modifier.width(60.dp), color = CrmOnSurface)
+                            IconButton(
+                                onClick = {
+                                    addItemHandle?.set("editingQuoteItem", item)
+                                    addItemHandle?.set("editingQuoteItemIndex", index)
+                                    addItemHandle?.set("nextItemSno", item.sNo)
+                                    navController.navigate(Screen.AddQuoteItem.route)
+                                },
+                                modifier = Modifier.size(28.dp),
+                            ) {
+                                Icon(Icons.Default.Edit, "Edit", tint = CrmPrimary, modifier = Modifier.size(15.dp))
+                            }
+                            IconButton(onClick = { items.removeAt(index) }, modifier = Modifier.size(28.dp)) {
+                                Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(15.dp))
+                            }
+                        }
+                        if (index < items.lastIndex)
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                    }
+
+                    if (items.isNotEmpty()) {
+                        val grandTotal = items.sumOf { it.price * it.quantity }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 1.dp)
+                        Row(
+                            modifier              = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("Grand Total", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Text("₹${String.format("%.2f", grandTotal)}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = CrmPrimary)
+                        }
+                    }
+
+                    TextButton(
+                        onClick  = {
+                            val nextSno = (items.maxOfOrNull { it.sNo } ?: 0) + 1
+                            navController.currentBackStackEntry
+                                ?.savedStateHandle?.set("nextItemSno", nextSno)
+                            navController.currentBackStackEntry
+                                ?.savedStateHandle?.set("editingQuoteItem", null)
+                            navController.currentBackStackEntry
+                                ?.savedStateHandle?.set("editingQuoteItemIndex", null)
+                            navController.navigate(Screen.AddQuoteItem.route)
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    ) {
+                        Text("+ Add Item", color = CrmPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QuoteFormField(label: String, value: String, placeholder: String, onValueChange: (String) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text = label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(130.dp))
+        TextField(
+            value         = value,
+            onValueChange = onValueChange,
+            placeholder   = { Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), fontSize = 13.sp) },
+            singleLine    = true,
+            modifier      = Modifier.weight(1f),
+            colors        = TextFieldDefaults.colors(
+                focusedContainerColor   = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedIndicatorColor   = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun QuoteDivider() = HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
