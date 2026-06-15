@@ -35,6 +35,9 @@ fun NavGraph(
             SignInScreen(navController = navController)
         }
 
+        composable(Screen.UserManagement.route) {
+            UserManagementScreen(navController = navController)
+        }
         // ── Dashboard ─────────────────────────────────────────────────────
         composable(Screen.Dashboard.route) {
             DashboardScreen(

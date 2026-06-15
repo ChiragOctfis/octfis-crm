@@ -28,26 +28,26 @@ fun CreateDealScreen(
     navController: NavController,
     vm: CreateDealViewModel = viewModel(),
 ) {
-    var dealName        by remember { mutableStateOf("") }
-    var accountName     by remember { mutableStateOf("") }
-    var accountZohoId   by remember { mutableStateOf("") }   // ← NEW
-    var contactName     by remember { mutableStateOf("") }
-    var contactZohoId   by remember { mutableStateOf("") }   // ← NEW
-    var amount          by remember { mutableStateOf("") }
-    var closingDate     by remember { mutableStateOf("") }
-    var type            by remember { mutableStateOf("-None-") }
-    var email           by remember { mutableStateOf("") }
-    var selectedOwner   by remember { mutableStateOf(Pair("", "-None-")) }
-    var description     by remember { mutableStateOf("") }
-    var stage           by remember { mutableStateOf("-None-") }
-    var leadSource      by remember { mutableStateOf("-None-") }
+    var dealName by remember { mutableStateOf("") }
+    var accountName by remember { mutableStateOf("") }
+    var accountZohoId by remember { mutableStateOf("") }   // ← NEW
+    var contactName by remember { mutableStateOf("") }
+    var contactZohoId by remember { mutableStateOf("") }   // ← NEW
+    var amount by remember { mutableStateOf("") }
+    var closingDate by remember { mutableStateOf("") }
+    var type by remember { mutableStateOf("-None-") }
+    var email by remember { mutableStateOf("") }
+    var selectedOwner by remember { mutableStateOf(Pair("", "-None-")) }
+    var description by remember { mutableStateOf("") }
+    var stage by remember { mutableStateOf("-None-") }
+    var leadSource by remember { mutableStateOf("-None-") }
     var leadSourceDrill by remember { mutableStateOf("") }
 
-    val options        by vm.options.collectAsState()
+    val options by vm.options.collectAsState()
     val optionsLoading by vm.optionsLoading.collectAsState()
-    val createState    by vm.createState.collectAsState()
-    val accountItems   by vm.accountItems.collectAsState()   // ← NEW
-    val contactItems   by vm.contactItems.collectAsState()   // ← NEW
+    val createState by vm.createState.collectAsState()
+    val accountItems by vm.accountItems.collectAsState()   // ← NEW
+    val contactItems by vm.contactItems.collectAsState()   // ← NEW
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -73,9 +73,9 @@ fun CreateDealScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text       = "Create Deal",
+                        text = "Create Deal",
                         fontWeight = FontWeight.SemiBold,
-                        fontSize   = 17.sp,
+                        fontSize = 17.sp,
                     )
                 },
                 navigationIcon = {
@@ -87,35 +87,39 @@ fun CreateDealScreen(
                     Button(
                         onClick = {
                             vm.save(
-                                dealName        = dealName,
-                                accountName     = accountName,
-                                accountZohoId   = accountZohoId,   // ← NEW
-                                contactName     = contactName,
-                                contactZohoId   = contactZohoId,   // ← NEW
-                                amount          = amount,
-                                closingDate     = closingDate,
-                                type            = type,
-                                email           = email,
-                                ownerEntry      = selectedOwner,
-                                description     = description,
-                                stage           = stage,
-                                leadSource      = leadSource,
+                                dealName = dealName,
+                                accountName = accountName,
+                                accountZohoId = accountZohoId,   // ← NEW
+                                contactName = contactName,
+                                contactZohoId = contactZohoId,   // ← NEW
+                                amount = amount,
+                                closingDate = closingDate,
+                                type = type,
+                                email = email,
+                                ownerEntry = selectedOwner,
+                                description = description,
+                                stage = stage,
+                                leadSource = leadSource,
                                 leadSourceDrill = leadSourceDrill,
                             )
                         },
-                        enabled  = !isSaving,
-                        colors   = ButtonDefaults.buttonColors(containerColor = CrmPrimary),
-                        shape    = RoundedCornerShape(6.dp),
+                        enabled = !isSaving,
+                        colors = ButtonDefaults.buttonColors(containerColor = CrmPrimary),
+                        shape = RoundedCornerShape(6.dp),
                         modifier = Modifier.padding(end = 8.dp),
                     ) {
                         if (isSaving)
                             CircularProgressIndicator(
-                                modifier    = Modifier.size(18.dp),
+                                modifier = Modifier.size(18.dp),
                                 strokeWidth = 2.dp,
-                                color       = MaterialTheme.colorScheme.surface,
+                                color = MaterialTheme.colorScheme.surface,
                             )
                         else
-                            Text("Save", color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "Save",
+                                color = MaterialTheme.colorScheme.surface,
+                                fontWeight = FontWeight.SemiBold
+                            )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
@@ -138,13 +142,13 @@ fun CreateDealScreen(
 
                     // ← FIXED: was plain text, now LookupField (captures Zoho ID)
                     LookupField(
-                        label       = "Account Name",
-                        value       = accountName,
+                        label = "Account Name",
+                        value = accountName,
                         placeholder = "Select Account",
-                        items       = accountItems,
-                        loading     = optionsLoading && accountItems.isEmpty(),
-                        onSelect    = { item ->
-                            accountName   = item.name
+                        items = accountItems,
+                        loading = optionsLoading && accountItems.isEmpty(),
+                        onSelect = { item ->
+                            accountName = item.name
                             accountZohoId = item.zohoId
                         },
                     )
@@ -152,34 +156,39 @@ fun CreateDealScreen(
 
                     // ← FIXED: was plain text, now LookupField (captures Zoho ID)
                     LookupField(
-                        label       = "Contact Name",
-                        value       = contactName,
+                        label = "Contact Name",
+                        value = contactName,
                         placeholder = "Select Contact",
-                        items       = contactItems,
-                        loading     = optionsLoading && contactItems.isEmpty(),
-                        onSelect    = { item ->
-                            contactName   = item.name
+                        items = contactItems,
+                        loading = optionsLoading && contactItems.isEmpty(),
+                        onSelect = { item ->
+                            contactName = item.name
                             contactZohoId = item.zohoId
                         },
                     )
                     DealDivider()
 
-                    DealFormField("Amount",       amount,      "Enter Deal Amount") { amount = it }
+                    DealFormField("Amount", amount, "Enter Deal Amount") { amount = it }
                     DealDivider()
                     DatePickerField("Closing Date", closingDate) { closingDate = it }
                     DealDivider()
-                    DealPicklistField("Type", type, options.types, optionsLoading)  { type = it }
+                    DealPicklistField("Type", type, options.types, optionsLoading) { type = it }
                     DealDivider()
-                    DealFormField("Email",        email,       "Enter Email ID")    { email = it }
+                    DealFormField("Email", email, "Enter Email ID") { email = it }
                     DealDivider()
                     DealPicklistField(
-                        label   = "Deal Owner",
-                        value   = selectedOwner.second,
+                        label = "Deal Owner",
+                        value = selectedOwner.second,
                         options = options.owners.map { it.second },
                         loading = optionsLoading,
-                    ) { name -> selectedOwner = options.owners.firstOrNull { it.second == name } ?: Pair("", name) }
+                    ) { name ->
+                        selectedOwner =
+                            options.owners.firstOrNull { it.second == name } ?: Pair("", name)
+                    }
                     DealDivider()
-                    DealFormField("Description", description, "Short description") { description = it }
+                    DealFormField("Description", description, "Short description") {
+                        description = it
+                    }
                 }
             }
 
@@ -189,11 +198,20 @@ fun CreateDealScreen(
 
             Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
                 Column {
-                    DealPicklistField("Stage",           stage,      options.stages,      optionsLoading) { stage = it }
+                    DealPicklistField("Stage", stage, options.stages, optionsLoading) { stage = it }
                     DealDivider()
-                    DealPicklistField("Lead Source",      leadSource, options.leadSources, optionsLoading) { leadSource = it }
+                    DealPicklistField(
+                        "Lead Source",
+                        leadSource,
+                        options.leadSources,
+                        optionsLoading
+                    ) { leadSource = it }
                     DealDivider()
-                    DealFormField("Lead Source Drill", leadSourceDrill, "Enter Source Reference") { leadSourceDrill = it }
+                    DealFormField(
+                        "Lead Source Drill",
+                        leadSourceDrill,
+                        "Enter Source Reference"
+                    ) { leadSourceDrill = it }
                 }
             }
 
@@ -204,28 +222,34 @@ fun CreateDealScreen(
 
 @Composable
 private fun DealFormField(
-    label        : String,
-    value        : String,
-    placeholder  : String,
+    label: String,
+    value: String,
+    placeholder: String,
     onValueChange: (String) -> Unit,
 ) {
     Row(
-        modifier          = Modifier
+        modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text = label, fontSize = 13.sp, color = CrmSubtext, modifier = Modifier.width(130.dp))
         TextField(
-            value         = value,
+            value = value,
             onValueChange = onValueChange,
-            placeholder   = { Text(text = placeholder, color = CrmSubtext.copy(alpha = 0.7f), fontSize = 13.sp) },
-            singleLine    = true,
-            modifier      = Modifier.weight(1f),
-            colors        = TextFieldDefaults.colors(
-                focusedContainerColor   = Color.Transparent,
+            placeholder = {
+                Text(
+                    text = placeholder,
+                    color = CrmSubtext.copy(alpha = 0.7f),
+                    fontSize = 13.sp
+                )
+            },
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor   = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
             ),
         )
@@ -235,20 +259,20 @@ private fun DealFormField(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DealPicklistField(
-    label   : String,
-    value   : String,
-    options : List<String>,
-    loading : Boolean,
+    label: String,
+    value: String,
+    options: List<String>,
+    loading: Boolean,
     onSelect: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
-        expanded         = expanded,
+        expanded = expanded,
         onExpandedChange = { if (!loading) expanded = it },
-        modifier         = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier          = Modifier
+            modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor()
                 .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -256,12 +280,16 @@ private fun DealPicklistField(
         ) {
             Text(label, fontSize = 13.sp, color = CrmSubtext, modifier = Modifier.width(130.dp))
             if (loading) {
-                CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = CrmSubtext)
+                CircularProgressIndicator(
+                    Modifier.size(14.dp),
+                    strokeWidth = 2.dp,
+                    color = CrmSubtext
+                )
             } else {
                 Text(
-                    text     = value,
+                    text = value,
                     fontSize = 13.sp,
-                    color    = if (value == "-None-") CrmSubtext else CrmOnSurface,
+                    color = if (value == "-None-") CrmSubtext else CrmOnSurface,
                     modifier = Modifier.weight(1f),
                 )
                 Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = CrmSubtext)
@@ -270,7 +298,7 @@ private fun DealPicklistField(
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { option ->
                 DropdownMenuItem(
-                    text    = { Text(option, fontSize = 14.sp) },
+                    text = { Text(option, fontSize = 14.sp) },
                     onClick = { onSelect(option); expanded = false },
                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                 )
@@ -282,8 +310,8 @@ private fun DealPicklistField(
 @Composable
 private fun DealDivider() {
     HorizontalDivider(
-        color     = CrmDivider,
+        color = CrmDivider,
         thickness = 0.5.dp,
-        modifier  = Modifier.padding(horizontal = 16.dp),
+        modifier = Modifier.padding(horizontal = 16.dp),
     )
 }

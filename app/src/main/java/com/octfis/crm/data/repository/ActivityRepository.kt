@@ -39,7 +39,7 @@ class ActivityRepository(private val api: ZohoApiService) {
             .map { raw -> allTasks.first { it.id == raw.id } }
 
         // ── Meetings — fetch once, split in memory ────────────────────────
-        val allMeetingsRaw = api.getEvents(sortBy = "Modified_Time", sortOrder = "desc").data ?: emptyList()
+        val allMeetingsRaw = api.getEvents().data ?: emptyList()
         val allMeetings = allMeetingsRaw.map {
             ActivityMeeting(
                 id            = it.id,

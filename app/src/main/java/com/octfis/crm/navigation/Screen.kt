@@ -2,6 +2,9 @@ package com.octfis.crm.navigation
 
 sealed class Screen(val route: String) {
     object SignIn        : Screen("sign_in")
+
+    object UserManagement : Screen("user_management")
+
     object Dashboard     : Screen("dashboard")
 
     object Accounts      : Screen("accounts")

@@ -33,9 +33,9 @@ class MainActivity : ComponentActivity() {
 
     // ── Permission state (observed by the drawer & permissions screen) ─────
     private val phoneStateGranted = mutableStateOf(false)
-    private val callLogGranted    = mutableStateOf(false)
-    private val notifGranted      = mutableStateOf(false)
-    private val overlayGranted    = mutableStateOf(false)
+    private val callLogGranted = mutableStateOf(false)
+    private val notifGranted = mutableStateOf(false)
+    private val overlayGranted = mutableStateOf(false)
 
     // ── Launchers ──────────────────────────────────────────────────────────
 
@@ -64,10 +64,16 @@ class MainActivity : ComponentActivity() {
     ) { grants ->
         phoneStateGranted.value =
             grants[Manifest.permission.READ_PHONE_STATE] == true ||
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
+                    ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.READ_PHONE_STATE
+                    ) == PackageManager.PERMISSION_GRANTED
         callLogGranted.value =
             grants[Manifest.permission.READ_CALL_LOG] == true ||
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED
+                    ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.READ_CALL_LOG
+                    ) == PackageManager.PERMISSION_GRANTED
         if (phoneStateGranted.value || callLogGranted.value) CallMonitorService.start(this)
     }
 
@@ -152,32 +158,34 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val isDark by themePrefs.isDarkTheme.collectAsState(initial = false)
-            val scope  = rememberCoroutineScope()
+            val scope = rememberCoroutineScope()
 
             OctfisCRMTheme(darkTheme = isDark) {
                 val navController = rememberNavController()
                 NavGraph(
-                    navController             = navController,
-                    onToggleTheme             = { scope.launch { themePrefs.setDarkTheme(!isDark) } },
-                    isDark                    = isDark,
-                    phoneStateGranted         = phoneStateGranted.value,
-                    callLogGranted            = callLogGranted.value,
-                    notifGranted              = notifGranted.value,
-                    overlayGranted            = overlayGranted.value,
-                    onRequestPhonePerms       = ::requestPhoneAndCallLogPerms,
-                    onRequestNotif            = ::requestNotifPerm,
-                    onRequestOverlay          = ::requestOverlayPerm,
-                    onOpenAppSettings         = ::openAppSettings,
-                    onOpenNotifSettings       = ::openNotifSettings,
-                    onOpenPhonePermSettings   = ::openPhonePermSettings,
+                    navController = navController,
+                    onToggleTheme = { scope.launch { themePrefs.setDarkTheme(!isDark) } },
+                    isDark = isDark,
+                    phoneStateGranted = phoneStateGranted.value,
+                    callLogGranted = callLogGranted.value,
+                    notifGranted = notifGranted.value,
+                    overlayGranted = overlayGranted.value,
+                    onRequestPhonePerms = ::requestPhoneAndCallLogPerms,
+                    onRequestNotif = ::requestNotifPerm,
+                    onRequestOverlay = ::requestOverlayPerm,
+                    onOpenAppSettings = ::openAppSettings,
+                    onOpenNotifSettings = ::openNotifSettings,
+                    onOpenPhonePermSettings = ::openPhonePermSettings,
                     onOpenCallLogPermSettings = ::openCallLogPermSettings,
                 )
-
+                // In onCreate LaunchedEffect — remove CallMonitorService OAuth dependency:
                 LaunchedEffect(Unit) {
                     // Start service only if permissions already granted from a previous session
                     if (phoneStateGranted.value || callLogGranted.value) {
                         CallMonitorService.start(this@MainActivity)
                     }
+                    // Restore session if app killed and restarted
+                    ZohoServiceLocator.getCatalystAuthManager().restoreSession()
                 }
             }
         }
@@ -195,15 +203,23 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
+    /* private fun handleIntent(intent: Intent?) {
+         val uri = intent?.data ?: return
+         Log.d("OctfisAuth", "handleIntent — uri: $uri")
+         if (uri.scheme == "com.octfis.crm" && uri.host == "oauth") {
+             lifecycleScope.launch {
+                 val success = ZohoServiceLocator.getAuthManager().handleCallback(uri)
+                 Log.d("OctfisAuth", "handleCallback result: $success")
+                 if (success) AuthState.onLoginSuccess()
+             }
+         }
+     }*/
+
+    // Remove handleIntent() OAuth callback — replace with:
+
     private fun handleIntent(intent: Intent?) {
-        val uri = intent?.data ?: return
-        Log.d("OctfisAuth", "handleIntent — uri: $uri")
-        if (uri.scheme == "com.octfis.crm" && uri.host == "oauth") {
-            lifecycleScope.launch {
-                val success = ZohoServiceLocator.getAuthManager().handleCallback(uri)
-                Log.d("OctfisAuth", "handleCallback result: $success")
-                if (success) AuthState.onLoginSuccess()
-            }
-        }
+        // Zoho OAuth removed — auth is now Catalyst email/password
+        // Keep method to avoid compile errors but no-op
     }
+
 }

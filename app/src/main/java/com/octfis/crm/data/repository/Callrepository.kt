@@ -100,7 +100,7 @@ class CallRepository(
         contactId: String,
         page: Int = 1,
     ): Result<List<CrmCall>> = runCatching {
-        val r = api.getCallsForContact(contactId, page)
+        val r = api.getCallsForContact(contactId, page=page)
         r.data?.map { map(it) } ?: emptyList()
     }
 

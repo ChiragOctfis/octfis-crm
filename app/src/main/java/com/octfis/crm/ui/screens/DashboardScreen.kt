@@ -32,80 +32,82 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.octfis.crm.data.remote.SessionManager
 import com.octfis.crm.data.remote.ZohoServiceLocator
 import com.octfis.crm.navigation.Screen
 import com.octfis.crm.ui.components.CrmBottomBar
 import com.octfis.crm.ui.theme.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 private enum class DashTab(val label: String, val icon: ImageVector) {
-    TodayActivity("Today",    Icons.Default.Today),
-    Calls        ("Calls",    Icons.Default.Call),
-    Meetings     ("Meetings", Icons.Default.Groups),
-    Task         ("Tasks",    Icons.Default.TaskAlt),
+    TodayActivity("Today", Icons.Default.Today),
+    Calls("Calls", Icons.Default.Call),
+    Meetings("Meetings", Icons.Default.Groups),
+    Task("Tasks", Icons.Default.TaskAlt),
 }
 
 @Composable
 fun DashboardScreen(
-    navController         : NavController,
-    onToggleTheme         : () -> Unit = {},
-    isDark                : Boolean    = false,
-    phoneStateGranted     : Boolean    = false,
-    callLogGranted        : Boolean    = false,
-    notifGranted          : Boolean    = false,
-    overlayGranted        : Boolean    = false,
-    onRequestPhonePerms       : () -> Unit = {},
-    onRequestNotif            : () -> Unit = {},
-    onRequestOverlay          : () -> Unit = {},
-    onOpenAppSettings         : () -> Unit = {},
-    onOpenNotifSettings       : () -> Unit = {},
-    onOpenPhonePermSettings   : () -> Unit = {},
-    onOpenCallLogPermSettings : () -> Unit = {},
-    onNavigateToPermissions   : () -> Unit = {},
-    vm                    : DashboardViewModel = viewModel(),
-    searchVm              : MasterSearchViewModel = viewModel(),
+    navController: NavController,
+    onToggleTheme: () -> Unit = {},
+    isDark: Boolean = false,
+    phoneStateGranted: Boolean = false,
+    callLogGranted: Boolean = false,
+    notifGranted: Boolean = false,
+    overlayGranted: Boolean = false,
+    onRequestPhonePerms: () -> Unit = {},
+    onRequestNotif: () -> Unit = {},
+    onRequestOverlay: () -> Unit = {},
+    onOpenAppSettings: () -> Unit = {},
+    onOpenNotifSettings: () -> Unit = {},
+    onOpenPhonePermSettings: () -> Unit = {},
+    onOpenCallLogPermSettings: () -> Unit = {},
+    onNavigateToPermissions: () -> Unit = {},
+    vm: DashboardViewModel = viewModel(),
+    searchVm: MasterSearchViewModel = viewModel(),
 ) {
-    var selectedTab    by remember { mutableStateOf(DashTab.TodayActivity) }
-    var searchActive   by remember { mutableStateOf(false) }
-    val navBackStack   by navController.currentBackStackEntryAsState()
-    val currentRoute   = navBackStack?.destination?.route
-    val uiState        by vm.uiState.collectAsState()
-    val searchState    by searchVm.state.collectAsState()
-    val scope          = rememberCoroutineScope()
+    var selectedTab by remember { mutableStateOf(DashTab.TodayActivity) }
+    var searchActive by remember { mutableStateOf(false) }
+    val navBackStack by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStack?.destination?.route
+    val uiState by vm.uiState.collectAsState()
+    val searchState by searchVm.state.collectAsState()
+    val scope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
-    val drawerState    = rememberDrawerState(DrawerValue.Closed)
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
 
     // Defaults to ON when permission is granted. User can toggle OFF to pause
     // the feature without revoking the OS permission. Auto-disables if OS revokes.
     var phoneStateEnabled by remember(phoneStateGranted) { mutableStateOf(phoneStateGranted) }
-    var callLogEnabled    by remember(callLogGranted)   { mutableStateOf(callLogGranted) }
-    var notifEnabled   by remember(notifGranted)   { mutableStateOf(notifGranted) }
+    var callLogEnabled by remember(callLogGranted) { mutableStateOf(callLogGranted) }
+    var notifEnabled by remember(notifGranted) { mutableStateOf(notifGranted) }
     var overlayEnabled by remember(overlayGranted) { mutableStateOf(overlayGranted) }
 
-    val todayCallCount    = (uiState as? DashboardUiState.Success)?.data?.todayCalls?.size ?: 0
+    val todayCallCount = (uiState as? DashboardUiState.Success)?.data?.todayCalls?.size ?: 0
     val todayMeetingCount = (uiState as? DashboardUiState.Success)?.data?.todayMeetings?.size ?: 0
-    val todayTaskCount    = (uiState as? DashboardUiState.Success)?.data?.todayTasks?.size ?: 0
+    val todayTaskCount = (uiState as? DashboardUiState.Success)?.data?.todayTasks?.size ?: 0
 
     ModalNavigationDrawer(
-        drawerState   = drawerState,
+        drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                drawerShape          = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
+                drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
                 drawerContainerColor = MaterialTheme.colorScheme.surface,
-                modifier             = Modifier.widthIn(max = 280.dp),
+                modifier = Modifier.widthIn(max = 280.dp),
             ) {
                 CrmDrawerContent(
-                    isDark                    = isDark,
-                    phoneStateEnabled         = phoneStateEnabled,
-                    callLogEnabled            = callLogEnabled,
-                    notifEnabled              = notifEnabled,
-                    overlayEnabled            = overlayEnabled,
-                    phoneStateGranted         = phoneStateGranted,
-                    callLogGranted            = callLogGranted,
-                    notifGranted              = notifGranted,
-                    overlayGranted            = overlayGranted,
-                    onToggleTheme             = { onToggleTheme() },
-                    onSetPhoneStateEnabled    = { enabled ->
+                    isDark = isDark,
+                    phoneStateEnabled = phoneStateEnabled,
+                    callLogEnabled = callLogEnabled,
+                    notifEnabled = notifEnabled,
+                    overlayEnabled = overlayEnabled,
+                    phoneStateGranted = phoneStateGranted,
+                    callLogGranted = callLogGranted,
+                    notifGranted = notifGranted,
+                    overlayGranted = overlayGranted,
+                    onToggleTheme = { onToggleTheme() },
+                    onSetPhoneStateEnabled = { enabled ->
                         if (!phoneStateGranted) {
                             onOpenPhonePermSettings()
                         } else if (enabled) {
@@ -114,7 +116,7 @@ fun DashboardScreen(
                             onOpenPhonePermSettings()
                         }
                     },
-                    onSetCallLogEnabled       = { enabled ->
+                    onSetCallLogEnabled = { enabled ->
                         if (!callLogGranted) {
                             onOpenCallLogPermSettings()
                         } else if (enabled) {
@@ -123,7 +125,7 @@ fun DashboardScreen(
                             onOpenCallLogPermSettings()
                         }
                     },
-                    onSetNotifEnabled         = { enabled ->
+                    onSetNotifEnabled = { enabled ->
                         if (!notifGranted) {
                             onOpenNotifSettings()
                         } else if (enabled) {
@@ -132,7 +134,7 @@ fun DashboardScreen(
                             onOpenNotifSettings()
                         }
                     },
-                    onSetOverlayEnabled       = { enabled ->
+                    onSetOverlayEnabled = { enabled ->
                         if (!overlayGranted) {
                             onRequestOverlay()
                         } else if (enabled) {
@@ -141,9 +143,9 @@ fun DashboardScreen(
                             onRequestOverlay()
                         }
                     },
-                    onOpenAppSettings         = onOpenAppSettings,
-                    onOpenNotifSettings       = onOpenNotifSettings,
-                    onOpenPhonePermSettings   = onOpenPhonePermSettings,
+                    onOpenAppSettings = onOpenAppSettings,
+                    onOpenNotifSettings = onOpenNotifSettings,
+                    onOpenPhonePermSettings = onOpenPhonePermSettings,
                     onOpenCallLogPermSettings = onOpenCallLogPermSettings,
                     onNavigateToPermissions = {
                         scope.launch {
@@ -154,18 +156,21 @@ fun DashboardScreen(
                     onLogout = {
                         scope.launch {
                             drawerState.close()
-                            ZohoServiceLocator.getTokenStore().clear()
+                            // ZohoServiceLocator.getTokenStore().clear()
+                            ZohoServiceLocator.getCatalystAuthManager().logout()
                             navController.navigate(Screen.SignIn.route) {
                                 popUpTo(0) { inclusive = true }
                             }
                         }
                     },
-                )
+                    navController = navController,
+
+                    )
             }
         },
     ) {
         Scaffold(
-            bottomBar      = { CrmBottomBar(navController, currentRoute) },
+            bottomBar = { CrmBottomBar(navController, currentRoute) },
             containerColor = MaterialTheme.colorScheme.background,
         ) { padding ->
             Box(
@@ -185,21 +190,42 @@ fun DashboardScreen(
                     ) {
                         // Hamburger — opens the drawer
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Open menu", tint = Color.White)
+                            Icon(
+                                Icons.Default.Menu,
+                                contentDescription = "Open menu",
+                                tint = Color.White
+                            )
                         }
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            text       = "Activity Dashboard",
+                            text = "Activity Dashboard",
                             fontWeight = FontWeight.Bold,
-                            fontSize   = 18.sp,
-                            color      = Color.White,
-                            modifier   = Modifier.weight(1f),
+                            fontSize = 18.sp,
+                            color = Color.White,
+                            modifier = Modifier.weight(1f),
                         )
+                        // Show logged-in user name
+                        val userName = SessionManager.userName()
+                        if (userName.isNotEmpty()) {
+                            Text(
+                                text = "Hi, $userName ${if (SessionManager.isAdmin()) "👑" else ""}",
+                                fontSize = 11.sp,
+                                color = Color.White.copy(alpha = 0.85f),
+                            )
+                        }
                         IconButton(onClick = { searchActive = true }) {
-                            Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.White)
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = Color.White
+                            )
                         }
                         IconButton(onClick = { vm.load() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color.White)
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = "Refresh",
+                                tint = Color.White
+                            )
                         }
                         // 3-dot removed — everything lives in the drawer now
                     }
@@ -214,9 +240,24 @@ fun DashboardScreen(
                                 .padding(bottom = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            SummaryCard("Calls",    "$todayCallCount",    Icons.Default.Call,    Modifier.weight(1f))
-                            SummaryCard("Meetings", "$todayMeetingCount", Icons.Default.Groups,  Modifier.weight(1f))
-                            SummaryCard("Tasks",    "$todayTaskCount",    Icons.Default.TaskAlt, Modifier.weight(1f))
+                            SummaryCard(
+                                "Calls",
+                                "$todayCallCount",
+                                Icons.Default.Call,
+                                Modifier.weight(1f)
+                            )
+                            SummaryCard(
+                                "Meetings",
+                                "$todayMeetingCount",
+                                Icons.Default.Groups,
+                                Modifier.weight(1f)
+                            )
+                            SummaryCard(
+                                "Tasks",
+                                "$todayTaskCount",
+                                Icons.Default.TaskAlt,
+                                Modifier.weight(1f)
+                            )
                         }
                     }
 
@@ -234,23 +275,27 @@ fun DashboardScreen(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(20.dp))
                                     .background(if (sel) CrmPrimary else MaterialTheme.colorScheme.surfaceVariant)
-                                    .border(1.dp, if (sel) CrmPrimary else MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp))
+                                    .border(
+                                        1.dp,
+                                        if (sel) CrmPrimary else MaterialTheme.colorScheme.outline,
+                                        RoundedCornerShape(20.dp)
+                                    )
                                     .clickable { selectedTab = tab }
                                     .padding(horizontal = 12.dp, vertical = 6.dp),
-                                verticalAlignment     = Alignment.CenterVertically,
+                                verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 Icon(
-                                    imageVector        = tab.icon,
+                                    imageVector = tab.icon,
                                     contentDescription = null,
-                                    tint               = if (sel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier           = Modifier.size(13.dp),
+                                    tint = if (sel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(13.dp),
                                 )
                                 Text(
-                                    text       = tab.label,
-                                    fontSize   = 12.sp,
+                                    text = tab.label,
+                                    fontSize = 12.sp,
                                     fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
-                                    color      = if (sel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = if (sel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
@@ -265,23 +310,41 @@ fun DashboardScreen(
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     CircularProgressIndicator(color = CrmPrimary)
                                     Spacer(Modifier.height(12.dp))
-                                    Text("Loading activities…", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                                    Text(
+                                        "Loading activities…",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 13.sp
+                                    )
                                 }
                             }
                         }
+
                         is DashboardUiState.Error -> {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Default.CloudOff, null, tint = CrmError, modifier = Modifier.size(48.dp))
+                                    Icon(
+                                        Icons.Default.CloudOff,
+                                        null,
+                                        tint = CrmError,
+                                        modifier = Modifier.size(48.dp)
+                                    )
                                     Spacer(Modifier.height(12.dp))
-                                    Text(s.message, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                                    Text(
+                                        s.message,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 13.sp
+                                    )
                                     Spacer(Modifier.height(16.dp))
-                                    Button(onClick = { vm.load() }, colors = ButtonDefaults.buttonColors(containerColor = CrmPrimary)) {
+                                    Button(
+                                        onClick = { vm.load() },
+                                        colors = ButtonDefaults.buttonColors(containerColor = CrmPrimary)
+                                    ) {
                                         Text("Retry")
                                     }
                                 }
                             }
                         }
+
                         is DashboardUiState.Success -> {
                             val data = s.data
                             Column(
@@ -294,55 +357,124 @@ fun DashboardScreen(
                                 when (selectedTab) {
                                     DashTab.TodayActivity -> {
                                         ProperTable(
-                                            title      = "My Calls",
-                                            headers    = listOf("Time", "Subject"),
-                                            rows       = data.todayCalls.map { listOf(formatTime(it.startTime), it.subject) },
-                                            rowIds     = data.todayCalls.map { it.id },
-                                            onRowClick = { id -> navController.navigate(Screen.CallDetail.createRoute(id)) },
+                                            title = "My Calls",
+                                            headers = listOf("Time", "Subject"),
+                                            rows = data.todayCalls.map {
+                                                listOf(
+                                                    formatTime(it.startTime),
+                                                    it.subject
+                                                )
+                                            },
+                                            rowIds = data.todayCalls.map { it.id },
+                                            onRowClick = { id ->
+                                                navController.navigate(
+                                                    Screen.CallDetail.createRoute(
+                                                        id
+                                                    )
+                                                )
+                                            },
                                             onAddClick = { navController.navigate(Screen.CreateCall.route) },
                                         )
                                         ProperTable(
-                                            title      = "My Meetings",
-                                            headers    = listOf("Time", "Subject"),
-                                            rows       = data.todayMeetings.map { listOf(formatTime(it.startDateTime), it.title) },
-                                            rowIds     = data.todayMeetings.map { it.id },
-                                            onRowClick = { id -> navController.navigate(Screen.MeetingDetail.createRoute(id)) },
+                                            title = "My Meetings",
+                                            headers = listOf("Time", "Subject"),
+                                            rows = data.todayMeetings.map {
+                                                listOf(
+                                                    formatTime(it.startDateTime),
+                                                    it.title
+                                                )
+                                            },
+                                            rowIds = data.todayMeetings.map { it.id },
+                                            onRowClick = { id ->
+                                                navController.navigate(
+                                                    Screen.MeetingDetail.createRoute(
+                                                        id
+                                                    )
+                                                )
+                                            },
                                             onAddClick = { navController.navigate(Screen.CreateMeeting.route) },
                                         )
                                         ProperTable(
-                                            title      = "My Tasks",
-                                            headers    = listOf("Due Date", "Subject"),
-                                            rows       = data.todayTasks.map { listOf(it.dueDate, it.subject) },
-                                            rowIds     = data.todayTasks.map { it.id },
-                                            onRowClick = { id -> navController.navigate(Screen.TaskDetail.createRoute(id)) },
+                                            title = "My Tasks",
+                                            headers = listOf("Due Date", "Subject"),
+                                            rows = data.todayTasks.map {
+                                                listOf(
+                                                    it.dueDate,
+                                                    it.subject
+                                                )
+                                            },
+                                            rowIds = data.todayTasks.map { it.id },
+                                            onRowClick = { id ->
+                                                navController.navigate(
+                                                    Screen.TaskDetail.createRoute(
+                                                        id
+                                                    )
+                                                )
+                                            },
                                             onAddClick = { navController.navigate(Screen.CreateTask.route) },
                                         )
                                     }
+
                                     DashTab.Calls -> {
                                         ProperTable(
-                                            title      = "All Calls",
-                                            headers    = listOf("Time", "Subject"),
-                                            rows       = data.allCalls.map { listOf(formatTime(it.startTime), it.subject) },
-                                            rowIds     = data.allCalls.map { it.id },
-                                            onRowClick = { id -> navController.navigate(Screen.CallDetail.createRoute(id)) },
+                                            title = "All Calls",
+                                            headers = listOf("Time", "Subject"),
+                                            rows = data.allCalls.map {
+                                                listOf(
+                                                    formatTime(it.startTime),
+                                                    it.subject
+                                                )
+                                            },
+                                            rowIds = data.allCalls.map { it.id },
+                                            onRowClick = { id ->
+                                                navController.navigate(
+                                                    Screen.CallDetail.createRoute(
+                                                        id
+                                                    )
+                                                )
+                                            },
                                         )
                                     }
+
                                     DashTab.Meetings -> {
                                         ProperTable(
-                                            title      = "All Meetings",
-                                            headers    = listOf("Time", "Subject"),
-                                            rows       = data.allMeetings.map { listOf(formatTime(it.startDateTime), it.title) },
-                                            rowIds     = data.allMeetings.map { it.id },
-                                            onRowClick = { id -> navController.navigate(Screen.MeetingDetail.createRoute(id)) },
+                                            title = "All Meetings",
+                                            headers = listOf("Time", "Subject"),
+                                            rows = data.allMeetings.map {
+                                                listOf(
+                                                    formatTime(it.startDateTime),
+                                                    it.title
+                                                )
+                                            },
+                                            rowIds = data.allMeetings.map { it.id },
+                                            onRowClick = { id ->
+                                                navController.navigate(
+                                                    Screen.MeetingDetail.createRoute(
+                                                        id
+                                                    )
+                                                )
+                                            },
                                         )
                                     }
+
                                     DashTab.Task -> {
                                         ProperTable(
-                                            title      = "All Tasks",
-                                            headers    = listOf("Due Date", "Subject"),
-                                            rows       = data.allTasks.map { listOf(it.dueDate, it.subject) },
-                                            rowIds     = data.allTasks.map { it.id },
-                                            onRowClick = { id -> navController.navigate(Screen.TaskDetail.createRoute(id)) },
+                                            title = "All Tasks",
+                                            headers = listOf("Due Date", "Subject"),
+                                            rows = data.allTasks.map {
+                                                listOf(
+                                                    it.dueDate,
+                                                    it.subject
+                                                )
+                                            },
+                                            rowIds = data.allTasks.map { it.id },
+                                            onRowClick = { id ->
+                                                navController.navigate(
+                                                    Screen.TaskDetail.createRoute(
+                                                        id
+                                                    )
+                                                )
+                                            },
                                         )
                                     }
                                 }
@@ -354,18 +486,18 @@ fun DashboardScreen(
                 // ── Master Search Overlay ──────────────────────────────────
                 AnimatedVisibility(
                     visible = searchActive,
-                    enter   = fadeIn() + slideInVertically { -40 },
-                    exit    = fadeOut() + slideOutVertically { -40 },
+                    enter = fadeIn() + slideInVertically { -40 },
+                    exit = fadeOut() + slideOutVertically { -40 },
                 ) {
                     MasterSearchOverlay(
-                        state          = searchState,
+                        state = searchState,
                         focusRequester = focusRequester,
-                        onQueryChange  = searchVm::onQueryChange,
-                        onClose        = {
+                        onQueryChange = searchVm::onQueryChange,
+                        onClose = {
                             searchActive = false
                             searchVm.clear()
                         },
-                        onResultClick  = { result ->
+                        onResultClick = { result ->
                             searchActive = false
                             searchVm.clear()
                             navigateToResult(navController, result)
@@ -382,27 +514,32 @@ fun DashboardScreen(
 
 @Composable
 private fun CrmDrawerContent(
-    isDark                    : Boolean,
-    phoneStateEnabled         : Boolean,
-    callLogEnabled            : Boolean,
-    notifEnabled              : Boolean,
-    overlayEnabled            : Boolean,
-    phoneStateGranted         : Boolean,
-    callLogGranted            : Boolean,
-    notifGranted              : Boolean,
-    overlayGranted            : Boolean,
-    onToggleTheme             : () -> Unit,
-    onSetPhoneStateEnabled    : (Boolean) -> Unit,
-    onSetCallLogEnabled       : (Boolean) -> Unit,
-    onSetNotifEnabled         : (Boolean) -> Unit,
-    onSetOverlayEnabled       : (Boolean) -> Unit,
-    onOpenAppSettings         : () -> Unit,
-    onOpenNotifSettings       : () -> Unit,
-    onOpenPhonePermSettings   : () -> Unit,
-    onOpenCallLogPermSettings : () -> Unit,
-    onNavigateToPermissions   : () -> Unit,
-    onLogout                  : () -> Unit,
+    isDark: Boolean,
+    phoneStateEnabled: Boolean,
+    callLogEnabled: Boolean,
+    notifEnabled: Boolean,
+    overlayEnabled: Boolean,
+    phoneStateGranted: Boolean,
+    callLogGranted: Boolean,
+    notifGranted: Boolean,
+    overlayGranted: Boolean,
+    onToggleTheme: () -> Unit,
+    onSetPhoneStateEnabled: (Boolean) -> Unit,
+    onSetCallLogEnabled: (Boolean) -> Unit,
+    onSetNotifEnabled: (Boolean) -> Unit,
+    onSetOverlayEnabled: (Boolean) -> Unit,
+    onOpenAppSettings: () -> Unit,
+    onOpenNotifSettings: () -> Unit,
+    onOpenPhonePermSettings: () -> Unit,
+    onOpenCallLogPermSettings: () -> Unit,
+    onNavigateToPermissions: () -> Unit,
+    onLogout: () -> Unit,
+    navController: NavController,
 ) {
+
+    val scope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+
     Column(modifier = Modifier.fillMaxHeight()) {
         // ── Header ────────────────────────────────────────────────────────
         Box(
@@ -412,10 +549,50 @@ private fun CrmDrawerContent(
                 .padding(horizontal = 20.dp, vertical = 28.dp),
         ) {
             Column {
-                Icon(Icons.Default.Business, null, tint = Color.White, modifier = Modifier.size(36.dp))
+                Icon(
+                    Icons.Default.Business,
+                    null,
+                    tint = Color.White,
+                    modifier = Modifier.size(36.dp)
+                )
                 Spacer(Modifier.height(8.dp))
-                Text("Octfis CRM", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                Text("Settings & Permissions", color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp)
+                Text(
+                    "Octfis CRM",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+                Text(
+                    text = SessionManager.userName().ifEmpty { "User" },
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text = SessionManager.currentUser?.email ?: "",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 11.sp,
+                )
+                if (SessionManager.isAdmin()) {
+                    Spacer(Modifier.height(4.dp))
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = Color.White.copy(alpha = 0.2f),
+                    ) {
+                        Text(
+                            text = "ADMIN",
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        )
+                    }
+                }
+                Text(
+                    "Settings & Permissions",
+                    color = Color.White.copy(alpha = 0.75f),
+                    fontSize = 12.sp
+                )
             }
         }
 
@@ -425,10 +602,10 @@ private fun CrmDrawerContent(
         DrawerSectionLabel("Appearance")
 
         DrawerSwitchRow(
-            icon            = if (isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
-            label           = "Dark Mode",
-            subtitle        = if (isDark) "Currently dark theme" else "Currently light theme",
-            checked         = isDark,
+            icon = if (isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+            label = "Dark Mode",
+            subtitle = if (isDark) "Currently dark theme" else "Currently light theme",
+            checked = isDark,
             onCheckedChange = { onToggleTheme() },
         )
 
@@ -438,23 +615,61 @@ private fun CrmDrawerContent(
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
 
         NavigationDrawerItem(
-            icon     = { Icon(Icons.Default.Security, null, tint = MaterialTheme.colorScheme.primary) },
-            label    = { Text("App Permissions", fontWeight = FontWeight.Medium) },
-            badge    = { Icon(Icons.Default.ArrowForwardIos, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) },
+            icon = { Icon(Icons.Default.Security, null, tint = MaterialTheme.colorScheme.primary) },
+            label = { Text("App Permissions", fontWeight = FontWeight.Medium) },
+            badge = {
+                Icon(
+                    Icons.Default.ArrowForwardIos,
+                    null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            },
             selected = false,
-            onClick  = { onNavigateToPermissions() },
+            onClick = { onNavigateToPermissions() },
             modifier = Modifier.padding(horizontal = 12.dp),
         )
 
         Spacer(Modifier.weight(1f))
+
+        if (SessionManager.isAdmin()) {
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            NavigationDrawerItem(
+                icon = { Icon(Icons.Default.People, null, tint = CrmPrimary) },
+                label = { Text("Manage Users", fontWeight = FontWeight.Medium) },
+                badge = {
+                    Icon(
+                        Icons.Default.ArrowForwardIos,
+                        null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
+                selected = false,
+                onClick = {
+                    scope.launch {
+                        drawerState.close()
+                        navController.navigate(Screen.UserManagement.route)
+                    }
+                },
+                modifier = Modifier.padding(horizontal = 12.dp),
+            )
+        }
+
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
         // ── Logout ────────────────────────────────────────────────────────
         NavigationDrawerItem(
-            icon     = { Icon(Icons.Default.Logout, null, tint = MaterialTheme.colorScheme.error) },
-            label    = { Text("Logout", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium) },
+            icon = { Icon(Icons.Default.Logout, null, tint = MaterialTheme.colorScheme.error) },
+            label = {
+                Text(
+                    "Logout",
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Medium
+                )
+            },
             selected = false,
-            onClick  = onLogout,
+            onClick = onLogout,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
         )
         Spacer(Modifier.height(12.dp))
@@ -464,49 +679,58 @@ private fun CrmDrawerContent(
 @Composable
 private fun DrawerSectionLabel(text: String) {
     Text(
-        text          = text.uppercase(),
-        fontSize      = 10.sp,
-        fontWeight    = FontWeight.SemiBold,
-        color         = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier      = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+        text = text.uppercase(),
+        fontSize = 10.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
         letterSpacing = 1.sp,
     )
 }
 
 @Composable
 private fun DrawerSwitchRow(
-    icon            : ImageVector,
-    label           : String,
-    subtitle        : String,
-    checked         : Boolean,
-    onCheckedChange : (Boolean) -> Unit,
+    icon: ImageVector,
+    label: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) }
             .padding(horizontal = 20.dp, vertical = 10.dp),
-        verticalAlignment     = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Icon(
-            imageVector        = icon,
+            imageVector = icon,
             contentDescription = null,
-            tint               = if (checked) CrmPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier           = Modifier.size(22.dp),
+            tint = if (checked) CrmPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(22.dp),
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
-            Text(subtitle, fontSize = 11.sp, color = if (checked) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                label,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                subtitle,
+                fontSize = 11.sp,
+                color = if (checked) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         Switch(
-            checked         = checked,
+            checked = checked,
             onCheckedChange = onCheckedChange,
-            colors          = SwitchDefaults.colors(
-                checkedThumbColor    = Color.White,
-                checkedTrackColor    = CrmPrimary,
-                uncheckedThumbColor  = Color.White,
-                uncheckedTrackColor  = MaterialTheme.colorScheme.surfaceVariant,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = CrmPrimary,
+                uncheckedThumbColor = Color.White,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
                 uncheckedBorderColor = MaterialTheme.colorScheme.outline,
             ),
         )
@@ -518,12 +742,27 @@ private fun DrawerSwitchRow(
 private fun navigateToResult(nav: NavController, result: SearchResult) {
     when (result.module) {
         SearchModule.ACCOUNT -> nav.navigate(Screen.AccountDetail.createRoute(result.id))
-        SearchModule.CONTACT -> nav.navigate(Screen.ContactDetail.createRoute(result.id.toIntOrNull() ?: 0))
-        SearchModule.DEAL    -> nav.navigate(Screen.DealDetail.createRoute(result.id.toIntOrNull() ?: 0))
-        SearchModule.QUOTE   -> nav.navigate(Screen.QuoteDetail.createRoute(result.id.toIntOrNull() ?: 0))
-        SearchModule.TASK    -> nav.navigate(Screen.TaskDetail.createRoute(result.id))
+        SearchModule.CONTACT -> nav.navigate(
+            Screen.ContactDetail.createRoute(
+                result.id.toIntOrNull() ?: 0
+            )
+        )
+
+        SearchModule.DEAL -> nav.navigate(
+            Screen.DealDetail.createRoute(
+                result.id.toIntOrNull() ?: 0
+            )
+        )
+
+        SearchModule.QUOTE -> nav.navigate(
+            Screen.QuoteDetail.createRoute(
+                result.id.toIntOrNull() ?: 0
+            )
+        )
+
+        SearchModule.TASK -> nav.navigate(Screen.TaskDetail.createRoute(result.id))
         SearchModule.MEETING -> nav.navigate(Screen.MeetingDetail.createRoute(result.id))
-        SearchModule.CALL    -> nav.navigate(Screen.CallDetail.createRoute(result.id))
+        SearchModule.CALL -> nav.navigate(Screen.CallDetail.createRoute(result.id))
     }
 }
 
@@ -531,11 +770,11 @@ private fun navigateToResult(nav: NavController, result: SearchResult) {
 
 @Composable
 private fun MasterSearchOverlay(
-    state         : MasterSearchUiState,
+    state: MasterSearchUiState,
     focusRequester: FocusRequester,
-    onQueryChange : (String) -> Unit,
-    onClose       : () -> Unit,
-    onResultClick : (SearchResult) -> Unit,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+    onResultClick: (SearchResult) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -550,7 +789,11 @@ private fun MasterSearchOverlay(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onClose) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Close search", tint = Color.White)
+                Icon(
+                    Icons.Default.ArrowBack,
+                    contentDescription = "Close search",
+                    tint = Color.White
+                )
             }
             Box(
                 modifier = Modifier
@@ -561,18 +804,18 @@ private fun MasterSearchOverlay(
             ) {
                 if (state.query.isEmpty()) {
                     Text(
-                        text  = "Search accounts, contacts, deals…",
+                        text = "Search accounts, contacts, deals…",
                         color = Color.White.copy(alpha = 0.6f),
                         fontSize = 14.sp,
                     )
                 }
                 BasicTextField(
-                    value         = state.query,
+                    value = state.query,
                     onValueChange = onQueryChange,
-                    singleLine    = true,
-                    textStyle     = TextStyle(color = Color.White, fontSize = 14.sp),
-                    cursorBrush   = SolidColor(Color.White),
-                    modifier      = Modifier
+                    singleLine = true,
+                    textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
+                    cursorBrush = SolidColor(Color.White),
+                    modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester),
                 )
@@ -594,19 +837,33 @@ private fun MasterSearchOverlay(
             state.query.isNotBlank() && state.results.isEmpty() && !state.isSearching -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.SearchOff, null, modifier = Modifier.size(56.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(
+                            Icons.Default.SearchOff,
+                            null,
+                            modifier = Modifier.size(56.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Spacer(Modifier.height(12.dp))
-                        Text("No results for \"${state.query}\"", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
-                        Text("Try a different name, email, stage, or amount", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                        Text(
+                            "No results for \"${state.query}\"",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            "Try a different name, email, stage, or amount",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
                     }
                 }
             }
+
             state.results.isNotEmpty() -> {
                 val grouped = state.results.groupBy { it.module }
                 Text(
-                    text     = "${state.results.size} result${if (state.results.size != 1) "s" else ""}",
+                    text = "${state.results.size} result${if (state.results.size != 1) "s" else ""}",
                     fontSize = 11.sp,
-                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                 )
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -620,14 +877,31 @@ private fun MasterSearchOverlay(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                Icon(moduleIcon(module), null, tint = CrmPrimary, modifier = Modifier.size(14.dp))
-                                Text(module.label + "s", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = CrmPrimary)
-                                Text("(${items.size})", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Icon(
+                                    moduleIcon(module),
+                                    null,
+                                    tint = CrmPrimary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    module.label + "s",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = CrmPrimary
+                                )
+                                Text(
+                                    "(${items.size})",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                         items(items) { result ->
                             SearchResultRow(result = result, onClick = { onResultClick(result) })
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp)
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outline,
+                                thickness = 0.5.dp
+                            )
                         }
                     }
                     item { Spacer(Modifier.height(24.dp)) }
@@ -640,23 +914,40 @@ private fun MasterSearchOverlay(
 @Composable
 private fun SearchHintGrid() {
     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Search across all modules", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
-        Text("Type any name, email, phone, stage, amount, or date.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            "Search across all modules",
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 15.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            "Type any name, email, phone, stage, amount, or date.",
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Spacer(Modifier.height(4.dp))
         val modules = listOf(
             SearchModule.ACCOUNT to "Company names, GSTIN, city",
             SearchModule.CONTACT to "Name, email, phone",
-            SearchModule.DEAL    to "Deal name, stage, amount",
-            SearchModule.QUOTE   to "Subject, stage, total",
-            SearchModule.TASK    to "Subject, status, priority",
+            SearchModule.DEAL to "Deal name, stage, amount",
+            SearchModule.QUOTE to "Subject, stage, total",
+            SearchModule.TASK to "Subject, status, priority",
             SearchModule.MEETING to "Title, date",
-            SearchModule.CALL    to "Subject, type, status",
+            SearchModule.CALL to "Subject, type, status",
         )
         modules.forEach { (mod, hint) ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 Icon(moduleIcon(mod), null, tint = CrmPrimary, modifier = Modifier.size(18.dp))
                 Column {
-                    Text(mod.label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        mod.label,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Text(hint, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -671,38 +962,74 @@ private fun SearchResultRow(result: SearchResult, onClick: () -> Unit) {
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment   = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(
-            modifier = Modifier.size(36.dp).clip(RoundedCornerShape(50)).background(CrmPrimary.copy(alpha = 0.12f)),
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(50))
+                .background(CrmPrimary.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(moduleIcon(result.module), null, tint = CrmPrimary, modifier = Modifier.size(18.dp))
+            Icon(
+                moduleIcon(result.module),
+                null,
+                tint = CrmPrimary,
+                modifier = Modifier.size(18.dp)
+            )
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(result.title, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                result.title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             if (result.subtitle.isNotBlank()) {
-                Text(result.subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    result.subtitle,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
         if (result.badge.isNotBlank()) {
-            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(CrmPrimary.copy(alpha = 0.1f)).padding(horizontal = 8.dp, vertical = 3.dp)) {
-                Text(result.badge, fontSize = 10.sp, color = CrmPrimary, fontWeight = FontWeight.SemiBold)
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(CrmPrimary.copy(alpha = 0.1f))
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    result.badge,
+                    fontSize = 10.sp,
+                    color = CrmPrimary,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
-        Icon(Icons.Default.ArrowForwardIos, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+        Icon(
+            Icons.Default.ArrowForwardIos,
+            null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
     }
 }
 
 private fun moduleIcon(module: SearchModule): ImageVector = when (module) {
     SearchModule.ACCOUNT -> Icons.Default.Business
     SearchModule.CONTACT -> Icons.Default.Person
-    SearchModule.DEAL    -> Icons.Default.Handshake
-    SearchModule.QUOTE   -> Icons.Default.Receipt
-    SearchModule.TASK    -> Icons.Default.TaskAlt
+    SearchModule.DEAL -> Icons.Default.Handshake
+    SearchModule.QUOTE -> Icons.Default.Receipt
+    SearchModule.TASK -> Icons.Default.TaskAlt
     SearchModule.MEETING -> Icons.Default.Groups
-    SearchModule.CALL    -> Icons.Default.Call
+    SearchModule.CALL -> Icons.Default.Call
 }
 
 private fun formatTime(raw: String): String {
@@ -714,19 +1041,31 @@ private fun formatTime(raw: String): String {
 }
 
 @Composable
-private fun SummaryCard(label: String, count: String, icon: ImageVector, modifier: Modifier = Modifier) {
+private fun SummaryCard(
+    label: String,
+    count: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier  = modifier,
-        shape     = RoundedCornerShape(12.dp),
-        colors    = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.2f)),
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.2f)),
         elevation = CardDefaults.cardElevation(0.dp),
     ) {
         Column(
-            modifier            = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
             Text(count, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
             Text(label, color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
         }
@@ -735,21 +1074,28 @@ private fun SummaryCard(label: String, count: String, icon: ImageVector, modifie
 
 @Composable
 private fun ProperTable(
-    title      : String,
-    headers    : List<String>,
-    rows       : List<List<String>>,
-    rowIds     : List<String> = emptyList(),
-    onRowClick : ((String) -> Unit)? = null,
-    onAddClick : (() -> Unit)? = null,
+    title: String,
+    headers: List<String>,
+    rows: List<List<String>>,
+    rowIds: List<String> = emptyList(),
+    onRowClick: ((String) -> Unit)? = null,
+    onAddClick: (() -> Unit)? = null,
 ) {
     Column {
         Row(
-            modifier              = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-            verticalAlignment     = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 if (onAddClick != null) {
                     Spacer(Modifier.width(6.dp))
                     Box(
@@ -761,38 +1107,64 @@ private fun ProperTable(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector        = Icons.Default.Add,
+                            imageVector = Icons.Default.Add,
                             contentDescription = "Add",
-                            tint               = Color.White,
-                            modifier           = Modifier.size(14.dp),
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp),
                         )
                     }
                 }
             }
-            Text("${rows.size} records", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "${rows.size} records",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         Card(
-            shape     = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(10.dp),
             elevation = CardDefaults.cardElevation(2.dp),
-            colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
-            modifier  = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Column {
-                Row(modifier = Modifier.fillMaxWidth().background(CrmPrimary)) {
+                Row(modifier = Modifier
+                    .fillMaxWidth()
+                    .background(CrmPrimary)) {
                     headers.forEachIndexed { index, header ->
                         Box(
                             modifier = Modifier
                                 .weight(if (index == 0) 1f else 2f)
-                                .then(if (index > 0) Modifier.border(0.5.dp, Color.White.copy(alpha = 0.3f)) else Modifier)
+                                .then(
+                                    if (index > 0) Modifier.border(
+                                        0.5.dp,
+                                        Color.White.copy(alpha = 0.3f)
+                                    ) else Modifier
+                                )
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
                         ) {
-                            Text(header, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            Text(
+                                header,
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp
+                            )
                         }
                     }
                 }
                 if (rows.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                        Text("No records found", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No records found",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 } else {
                     rows.forEachIndexed { rowIdx, row ->
@@ -801,21 +1173,37 @@ private fun ProperTable(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(if (rowIdx % 2 == 0) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface)
-                                .then(if (onRowClick != null && rowId.isNotEmpty()) Modifier.clickable { onRowClick(rowId) } else Modifier),
+                                .then(if (onRowClick != null && rowId.isNotEmpty()) Modifier.clickable {
+                                    onRowClick(
+                                        rowId
+                                    )
+                                } else Modifier),
                         ) {
                             row.forEachIndexed { colIdx, cell ->
                                 Box(
                                     modifier = Modifier
                                         .weight(if (colIdx == 0) 1f else 2f)
-                                        .then(if (colIdx > 0) Modifier.border(0.5.dp, CrmDivider) else Modifier)
+                                        .then(
+                                            if (colIdx > 0) Modifier.border(
+                                                0.5.dp,
+                                                CrmDivider
+                                            ) else Modifier
+                                        )
                                         .padding(horizontal = 12.dp, vertical = 12.dp),
                                 ) {
-                                    Text(cell, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
+                                    Text(
+                                        cell,
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                 }
                             }
                         }
                         if (rowIdx < rows.lastIndex)
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp)
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outline,
+                                thickness = 0.5.dp
+                            )
                     }
                 }
             }

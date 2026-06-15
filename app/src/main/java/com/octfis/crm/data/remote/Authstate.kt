@@ -1,12 +1,9 @@
+// app/src/main/java/com/octfis/crm/data/remote/Authstate.kt
 package com.octfis.crm.data.remote
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/**
- * Singleton that signals a successful OAuth login to the Compose UI.
- * MainActivity writes to it after handleCallback(); SignInScreen observes it.
- */
 object AuthState {
     private val _loginSuccess = MutableStateFlow(false)
     val loginSuccess = _loginSuccess.asStateFlow()
