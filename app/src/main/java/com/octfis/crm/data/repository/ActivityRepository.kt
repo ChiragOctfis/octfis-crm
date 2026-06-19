@@ -1,10 +1,12 @@
 package com.octfis.crm.data.repository
 
+import android.util.Log
 import com.octfis.crm.data.model.ActivityCall
 import com.octfis.crm.data.model.ActivityMeeting
 import com.octfis.crm.data.model.ActivityTask
 import com.octfis.crm.data.remote.ZohoApiService
 import java.time.LocalDate
+import kotlin.math.log
 
 data class DashboardData(
     // Today tab — filtered by today's date + current user
@@ -24,12 +26,13 @@ class ActivityRepository(private val api: ZohoApiService) {
         val currentUserId = api.getUsers("CurrentUser").users?.firstOrNull()?.id.orEmpty()
 
         // ── Tasks — fetch once, split in memory ───────────────────────────
-        val allTasksRaw = api.getTasks(sortBy = "Modified_Time", sortOrder = "desc").data ?: emptyList()
+        val allTasksRaw = api.getTasks().data ?: emptyList()
+
         val allTasks = allTasksRaw.map {
             ActivityTask(
                 id       = it.id,
                 subject  = it.subject.orEmpty().ifEmpty { "(No Subject)" },
-                dueDate  = it.dueDate.orEmpty().take(10),
+                dueDate  = it.dueDate.orEmpty(),
                 status   = it.status.orEmpty(),
                 priority = it.priority.orEmpty(),
             )

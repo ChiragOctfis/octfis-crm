@@ -25,9 +25,6 @@ class CatalystAuthManager(
 ) {
     private val http = OkHttpClient()
 
-    // Use your existing Catalyst base URL from app_configuration_development.properties
-    private val baseUrl =
-        "https://crm-mobile-app-927349475.development.catalystserverless.com"
 
     suspend fun login(
         email    : String,
@@ -40,7 +37,7 @@ class CatalystAuthManager(
             }.toString()
 
             val request = Request.Builder()
-                .url("$baseUrl/server/appauth/login")
+                .url("${ZohoConstants.BASE_URL}/server/appauth")
                 .post(body.toRequestBody("application/json".toMediaType()))
                 .build()
 
@@ -63,6 +60,7 @@ class CatalystAuthManager(
                 role           = userJson.getString("role"),
                 userFieldValue = userJson.getString("userFieldValue"),
             )
+            Log.d("CatalystAuth", "login response [${response.code}]: $raw")
 
             // Persist to DataStore
             tokenStore.saveJwtToken(token)

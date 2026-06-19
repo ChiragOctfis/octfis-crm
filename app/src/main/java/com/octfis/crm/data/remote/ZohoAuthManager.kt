@@ -12,6 +12,7 @@ class ZohoAuthManager(
 ) {
     fun launchAuthFlow(activityContext: Context) {
         // No-op — Zoho OAuth replaced by Catalyst email/password login
+
     }
 
     suspend fun handleCallback(uri: android.net.Uri) = false

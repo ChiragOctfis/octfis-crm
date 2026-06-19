@@ -4,6 +4,7 @@ object ZohoConstants {
     const val AUTH_BASE_URL = "https://accounts.zoho.com/oauth/v2/"
     const val API_BASE_URL  = "https://www.zohoapis.com/crm/v2/"
     const val REDIRECT_URI  = "com.octfis.crm://oauth/callback"
+    const val BASE_URL="https://crm-mobile-app-927349475.development.catalystserverless.com"
 
     // ADDED: ZohoCRM.modules.products.READ so the app can fetch the Products module
     const val SCOPE =

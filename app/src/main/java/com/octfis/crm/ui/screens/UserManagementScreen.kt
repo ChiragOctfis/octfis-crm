@@ -21,6 +21,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.octfis.crm.data.remote.SessionManager
+import com.octfis.crm.data.remote.ZohoConstants
 import com.octfis.crm.ui.theme.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,8 +58,6 @@ sealed class UserActionState {
 
 class UserManagementViewModel : ViewModel() {
 
-    private val baseUrl =
-        "https://crm-mobile-app-927349475.development.catalystserverless.com"
     private val http    = OkHttpClient()
 
     private val _state       = MutableStateFlow<UserMgmtState>(UserMgmtState.Loading)
@@ -74,7 +73,7 @@ class UserManagementViewModel : ViewModel() {
             _state.value = UserMgmtState.Loading
             runCatching {
                 val request = Request.Builder()
-                    .url("$baseUrl/server/adminapi/users")
+                    .url("${ZohoConstants.BASE_URL}/server/adminapi/users")
                     .header("Authorization", "Bearer ${getToken()}")
                     .get()
                     .build()
@@ -88,7 +87,7 @@ class UserManagementViewModel : ViewModel() {
                         name           = u.getString("name"),
                         email          = u.getString("email"),
                         role           = u.getString("role"),
-                        userFieldValue = u.getString("zoho_user_field_value"),
+                        userFieldValue = u.getString("userFieldValue"),
                         isActive       = u.getBoolean("is_active"),
                     )
                 }
@@ -114,10 +113,10 @@ class UserManagementViewModel : ViewModel() {
                     put("email",                  email)
                     put("password",               password)
                     put("role",                   role)
-                    put("zoho_user_field_value",  userFieldValue)
+                    put("userFieldValue",  userFieldValue)
                 }.toString()
                 val request = Request.Builder()
-                    .url("$baseUrl/server/adminapi/users")
+                    .url("${ZohoConstants.BASE_URL}/server/adminapi/users")
                     .header("Authorization", "Bearer ${getToken()}")
                     .post(body.toRequestBody("application/json".toMediaType()))
                     .build()
@@ -140,7 +139,7 @@ class UserManagementViewModel : ViewModel() {
                     put("is_active", !currentlyActive)
                 }.toString()
                 val request = Request.Builder()
-                    .url("$baseUrl/server/adminapi/users/$userId")
+                    .url("${ZohoConstants.BASE_URL}/server/adminapi/users/$userId")
                     .header("Authorization", "Bearer ${getToken()}")
                     .put(body.toRequestBody("application/json".toMediaType()))
                     .build()
