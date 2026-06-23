@@ -197,20 +197,27 @@ fun DashboardScreen(
                             )
                         }
                         Spacer(Modifier.width(4.dp))
-                        Text(
-                            text = "Activity Dashboard",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = Color.White,
-                            modifier = Modifier.weight(1f),
-                        )
+
                         // Show logged-in user name
                         val userName = SessionManager.userName()
                         if (userName.isNotEmpty()) {
                             Text(
-                                text = "Hi, $userName ${if (SessionManager.isAdmin()) "👑" else ""}",
-                                fontSize = 11.sp,
-                                color = Color.White.copy(alpha = 0.85f),
+                                text = "$userName 's Dashboard ${if (SessionManager.isAdmin()) "👑" else ""}",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                maxLines = 1,
+                                color = Color.White,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        else{
+                            Text(
+                                text = "Activity Dashboard",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                maxLines = 1,
+                                color = Color.White,
+                                modifier = Modifier.weight(1f),
                             )
                         }
                         IconButton(onClick = { searchActive = true }) {

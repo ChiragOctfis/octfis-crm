@@ -37,7 +37,7 @@ class CatalystAuthManager(
             }.toString()
 
             val request = Request.Builder()
-                .url("${ZohoConstants.BASE_URL}/server/appauth")
+                .url("${ZohoConstants.BASE_URL}/server/appauth/login")
                 .post(body.toRequestBody("application/json".toMediaType()))
                 .build()
 

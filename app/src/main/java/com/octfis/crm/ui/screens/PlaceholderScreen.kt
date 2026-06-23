@@ -26,37 +26,37 @@ fun PlaceholderScreen(navController: NavController, title: String) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title  = {
+                title = {
                     Text(
-                        text       = title,
+                        text = title,
                         fontWeight = FontWeight.SemiBold,
-                        fontSize   = 17.sp,
+                        fontSize = 17.sp,
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
-        bottomBar      = { CrmBottomBar(navController, currentRoute) },
-       containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = { CrmBottomBar(navController, currentRoute) },
+        containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         Box(
-            modifier         = Modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
-                    imageVector        = Icons.Default.Construction,
+                    imageVector = Icons.Default.Construction,
                     contentDescription = null,
-                    tint               = CrmPrimary,
-                    modifier           = Modifier.size(56.dp),
+                    tint = CrmPrimary,
+                    modifier = Modifier.size(56.dp),
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text     = "$title coming soon",
+                    text = "$title coming soon",
                     fontSize = 16.sp,
-                    color    = CrmSubtext,
+                    color = CrmSubtext,
                 )
             }
         }
