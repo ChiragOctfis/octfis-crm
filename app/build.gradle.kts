@@ -66,6 +66,8 @@ dependencies {
 
     // Chrome Custom Tabs for OAuth login
     implementation("androidx.browser:browser:1.8.0")
+    // location
+    implementation("com.google.android.gms:play-services-location:21.0.1")
 
     debugImplementation(libs.androidx.ui.tooling)
 

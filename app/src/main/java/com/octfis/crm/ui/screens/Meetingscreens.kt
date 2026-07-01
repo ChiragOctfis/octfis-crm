@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,7 +57,7 @@ fun MeetingDetailScreen(
         ?: remember { mutableStateOf(false) }
 
     LaunchedEffect(shouldRefresh) {
-        if (shouldRefresh == true) {
+        if (shouldRefresh) {
             detailVm.load()
             navController.currentBackStackEntry
                 ?.savedStateHandle
@@ -165,6 +166,26 @@ fun MeetingDetailScreen(
             SectionHeader("Description")
             Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
                 FormRow("Description", meeting.description.ifEmpty { "—" })
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // ── Check In Section ──────────────────────────────────────────────────────
+            Spacer(Modifier.height(8.dp))
+
+            SectionHeader("Meeting Check-In")
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                color = Color.Transparent,
+            ) {
+                MeetingCheckInCard(
+                    meetingZohoId   = meeting.zohoId,
+                    meetingTitle    = meeting.title,
+                    meetingLocation = meeting.location,
+                )
             }
 
             Spacer(Modifier.height(24.dp))

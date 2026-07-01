@@ -616,31 +616,8 @@ private fun CrmDrawerContent(
             onCheckedChange = { onToggleTheme() },
         )
 
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-
-        // ── Permissions ───────────────────────────────────────────────────
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-
-        NavigationDrawerItem(
-            icon = { Icon(Icons.Default.Security, null, tint = MaterialTheme.colorScheme.primary) },
-            label = { Text("App Permissions", fontWeight = FontWeight.Medium) },
-            badge = {
-                Icon(
-                    Icons.Default.ArrowForwardIos,
-                    null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
-            },
-            selected = false,
-            onClick = { onNavigateToPermissions() },
-            modifier = Modifier.padding(horizontal = 12.dp),
-        )
-
-        Spacer(Modifier.weight(1f))
-
         if (SessionManager.isAdmin()) {
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
             NavigationDrawerItem(
                 icon = { Icon(Icons.Default.People, null, tint = CrmPrimary) },
                 label = { Text("Manage Users", fontWeight = FontWeight.Medium) },
@@ -663,7 +640,28 @@ private fun CrmDrawerContent(
             )
         }
 
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        // ── Permissions ───────────────────────────────────────────────────
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+
+        NavigationDrawerItem(
+            icon = { Icon(Icons.Default.Security, null, tint = MaterialTheme.colorScheme.primary) },
+            label = { Text("App Permissions", fontWeight = FontWeight.Medium) },
+            badge = {
+                Icon(
+                    Icons.Default.ArrowForwardIos,
+                    null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            },
+            selected = false,
+            onClick = { onNavigateToPermissions() },
+            modifier = Modifier.padding(horizontal = 12.dp),
+        )
+
+//        Spacer(Modifier.weight(1f))
+
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
 
         // ── Logout ────────────────────────────────────────────────────────
         NavigationDrawerItem(

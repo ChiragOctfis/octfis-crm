@@ -46,6 +46,12 @@ data class ZohoEvent(
     @SerializedName("All_day")          val allDay: Boolean?,
     @SerializedName("Remind_At")        val remindAt: FlexibleReminder?,
     @SerializedName("Participants")     val participants: List<ZohoParticipant>?,
+    // ── CheckIn fields ────────────────────────────────────────────────────────
+    @SerializedName("CheckIn_Status")   val checkInStatus  : String?,
+    @SerializedName("CheckIn_Time")     val checkInTime    : String?,
+    @SerializedName("CheckIn_Lat")      val checkInLat     : Double?,
+    @SerializedName("CheckIn_Long")     val checkInLong    : Double?,
+    @SerializedName("CheckIn_Address")  val checkInAddress : String?,
 )
 
 // Shared reminder class — handles both Task and Event Remind_At
